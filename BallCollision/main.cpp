@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 #include <utility>
+#include <future>
+#include <mutex>
 
 constexpr int WINDOW_X = 1024;
 constexpr int WINDOW_Y = 768;
@@ -32,7 +34,8 @@ static void draw_fps(sf::RenderWindow& window, float fps)
 using colliding_ball_container_t = std::unordered_map<Ball*, Ball*>;
 
 static void validateCollisions(std::vector<Ball*>& balls,
-    colliding_ball_container_t& colliding_balls)
+    colliding_ball_container_t& colliding_balls,
+    std::mutex& colliding_mtx)
 {
     for (auto& ball : balls)
     {        
@@ -54,6 +57,7 @@ static void validateCollisions(std::vector<Ball*>& balls,
                     k = next;
                     v = ball;
                 }
+                std::scoped_lock lock{ colliding_mtx };
                 auto iter = colliding_balls.find(k);
                 if (iter == colliding_balls.end() || iter->second != v)
                 {
@@ -119,6 +123,7 @@ int main()
     sf::Clock clock;
     auto balls = random_balls();
     float lastime = clock.restart().asSeconds();
+    std::mutex colliding_mutex{};
 
     while (window.isOpen())
     {
@@ -160,10 +165,27 @@ int main()
             }
             ball_groups.push_back(ball_group);
         }
-        
-        for (auto& group : ball_groups)
+
+        // it may be significantly better to use TBB worker pool 
+        std::vector<std::future<void>> done;
+        for (size_t i = 0; i < ball_groups.size(); ++i)
         {
-            validateCollisions(group, colliding_balls);
+            done.push_back(
+                std::async(
+                    std::launch::async,
+                    validateCollisions,
+                    std::ref(ball_groups[i]),
+                    std::ref(colliding_balls),
+                    std::ref(colliding_mutex))
+            );
+        }
+
+        for (size_t i = 0; i < ball_groups.size(); ++i)
+        {
+            if (done[i].valid())
+            {
+                done[i].get();
+            }
         }
 
         for (auto& [b1, b2] : colliding_balls)
