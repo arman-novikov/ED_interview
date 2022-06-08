@@ -2,6 +2,7 @@
 
 #include "SFML/Graphics.hpp"
 
+#include <vector>
 
 class Ball
 {
@@ -14,10 +15,13 @@ public:
     bool Displace(Ball& ball);
     void Move(float deltaTime);
     void Collide(Ball& ball);
+    bool ContainedIn(const sf::Vector2f& s, const sf::Vector2f& e) const;
 private:
     enum class BorderCollision {
         None, Left, Upper, Right, Bottom
     };
+    using circumscribed_square_points_t = std::vector<sf::Vector2f>;
+    circumscribed_square_points_t GetCircSquare() const;
     BorderCollision FindBorderCollision(int maxX, int maxY) const;
     float DistanceBetweenCenters(const Ball& ball) const;
     bool Overlaps(const Ball& ball) const;

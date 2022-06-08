@@ -91,6 +91,29 @@ void Ball::Collide(Ball& ball)
     ball.dir.y = ball.dir.y + p * mass * ny;
 }
 
+Ball::circumscribed_square_points_t Ball::GetCircSquare() const
+{
+    circumscribed_square_points_t res{4};
+    res[0] = { p.x - r, p.y - r };
+    res[1] = { p.x + r, p.y - r };
+    res[2] = { p.x + r, p.y + r };
+    res[3] = { p.x - r, p.y + r };
+    return res;
+}
+
+bool Ball::ContainedIn(const sf::Vector2f& s, const sf::Vector2f& e) const
+{
+    const auto circ_square = GetCircSquare();
+    for (const auto& p : circ_square)
+    {
+        if (p.x >= s.x && p.x <= e.x && p.y >= s.y && p.y <= e.y)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 float Ball::GetRadius() const
 {
     return r;
